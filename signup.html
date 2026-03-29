@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TGM Staff Signup</title>
+  <style>
+    :root {
+      --gold: #d4af37;
+      --gold-dark: #a97b00;
+      --text: #2e240f;
+      --muted: #756544;
+      --border: rgba(212,175,55,0.25);
+      --shadow: 0 18px 50px rgba(102, 72, 0, 0.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #fffefb, #fff6dd);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .wrap {
+      width: min(720px, 100%);
+      background: rgba(255,255,255,0.97);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      padding: 34px;
+    }
+    h1 { margin: 0 0 10px; font-size: 2.2rem; }
+    p { color: var(--muted); line-height: 1.75; }
+    form { display: grid; gap: 15px; margin-top: 22px; }
+    label { font-weight: 700; font-size: 0.95rem; }
+    input {
+      width: 100%;
+      padding: 14px 15px;
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,0.08);
+      font-size: 1rem;
+      outline: none;
+    }
+    input:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(212,175,55,0.12); }
+    button, a.btn {
+      border: none;
+      border-radius: 999px;
+      padding: 14px 18px;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .primary { background: linear-gradient(135deg, var(--gold), #f3dc8a); color: #402e00; }
+    .secondary { background: white; color: var(--text); border: 1px solid var(--border); }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .message { min-height: 22px; font-weight: 700; font-size: 0.94rem; }
+    .note {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: #fffdf7;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Create a staff account request</h1>
+    <p>
+      To request portal access, your Discord ID must already be on the approval list. Once submitted, leadership can review your request and approve or deny it.
+    </p>
+
+    <form id="signupForm">
+      <div>
+        <label for="signupUsername">Roblox Username</label>
+        <input id="signupUsername" required />
+      </div>
+      <div>
+        <label for="signupPassword">Password</label>
+        <input id="signupPassword" type="password" required />
+      </div>
+      <div>
+        <label for="signupDiscordId">Discord ID</label>
+        <input id="signupDiscordId" required />
+      </div>
+      <div class="message" id="signupMessage"></div>
+      <div class="row">
+        <button type="submit" class="primary">Submit Request</button>
+        <a class="btn secondary" href="staff-login.html">Back to Login</a>
+      </div>
+    </form>
+
+    <div class="note">
+      Requests are only accepted when the Discord ID exists in the <strong>allowedDiscords</strong> collection with <strong>allowed: true</strong>. Approved requests are moved directly into the <strong>users</strong> collection.
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB7ew2ofAv4VyWzGxsaUixwqSeKtuZDqfo",
+      authDomain: "tgm-portal-001.firebaseapp.com",
+      projectId: "tgm-portal-001",
+      storageBucket: "tgm-portal-001.firebasestorage.app",
+      messagingSenderId: "236612525488",
+      appId: "1:236612525488:web:a92b738d3247f75a4dca75"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const form = document.getElementById('signupForm');
+    const message = document.getElementById('signupMessage');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      message.textContent = 'Submitting request...';
+
+      const robloxUsername = document.getElementById('signupUsername').value.trim();
+      const password = document.getElementById('signupPassword').value;
+      const discordId = document.getElementById('signupDiscordId').value.trim();
+
+      try {
+        const allowRef = doc(db, 'allowedDiscords', discordId);
+        const allowSnap = await getDoc(allowRef);
+
+        if (!allowSnap.exists() || allowSnap.data().allowed !== true) {
+          message.textContent = 'This Discord ID is not approved to sign up.';
+          return;
+        }
+
+        const existingUserSnap = await getDoc(doc(db, 'users', robloxUsername));
+        if (existingUserSnap.exists()) {
+          message.textContent = 'An approved account with that Roblox Username already exists.';
+          return;
+        }
+
+        const existingPending = await getDocs(query(collection(db, 'signupRequests'), where('robloxUsername', '==', robloxUsername), where('status', '==', 'pending')));
+        if (!existingPending.empty) {
+          message.textContent = 'There is already a pending request for that Roblox Username.';
+          return;
+        }
+
+        await addDoc(collection(db, 'signupRequests'), {
+          robloxUsername,
+          password,
+          discordId,
+          status: 'pending',
+          requestedAt: serverTimestamp()
+        });
+
+        form.reset();
+        message.textContent = 'Request submitted successfully. Please wait for leadership review.';
+      } catch (err) {
+        console.error(err);
+        message.textContent = 'There was an error while submitting your request.';
+      }
+    });
+  </script>
+</body>
+</html>
