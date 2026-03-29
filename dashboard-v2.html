@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TGM Dashboard</title>
+  <style>
+    :root {
+      --gold: #d4af37;
+      --gold-dark: #a97b00;
+      --text: #2e240f;
+      --muted: #756544;
+      --border: rgba(212,175,55,0.22);
+      --shadow: 0 18px 50px rgba(102, 72, 0, 0.12);
+      --danger: #8b2e2e;
+      --success: #1d6b33;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: var(--text); background: linear-gradient(180deg, #fffefb, #fff7e3); }
+    .topbar { position: sticky; top: 0; z-index: 10; background: rgba(255,255,255,0.9); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+    .container { width: min(1240px, calc(100% - 32px)); margin: 0 auto; }
+    .nav { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 0; flex-wrap: wrap; }
+    .brand { display:flex; align-items:center; gap:14px; font-weight:800; }
+    .badge { width:44px; height:44px; border-radius:14px; display:grid; place-items:center; background: linear-gradient(135deg, var(--gold), #f1d97f); color:white; }
+    .btn, button { border:none; border-radius:999px; padding:12px 18px; font-weight:800; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+    .primary { background: linear-gradient(135deg, var(--gold), #f3dc8a); color: #402e00; }
+    .secondary { background:white; color:var(--text); border:1px solid var(--border); }
+    .danger { background:#fff3f3; color:var(--danger); border:1px solid rgba(139,46,46,0.14); }
+    .hero { padding: 34px 0 20px; }
+    .hero-grid, .grid, .stat-wrap { display:grid; gap:18px; }
+    .hero-grid { grid-template-columns: 1.2fr 0.8fr; }
+    .grid { grid-template-columns: repeat(2, minmax(0,1fr)); padding-bottom: 40px; }
+    .stat-wrap { grid-template-columns: repeat(4, minmax(0,1fr)); margin-top: 18px; }
+    .panel { background: rgba(255,255,255,0.96); border: 1px solid var(--border); border-radius: 24px; padding: 22px; box-shadow: var(--shadow); }
+    .full { grid-column: 1 / -1; }
+    h1,h2,h3 { margin-top:0; }
+    .muted { color: var(--muted); line-height: 1.75; }
+    .stat { background:#fffdf7; border:1px solid var(--border); border-radius:18px; padding:16px; }
+    .stat strong { display:block; font-size:1.2rem; margin-bottom:6px; }
+    .tag { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; background:rgba(212,175,55,0.14); color:var(--gold-dark); font-weight:700; font-size:0.9rem; }
+    .list { display:grid; gap:14px; }
+    .item { border:1px solid var(--border); border-radius:18px; padding:16px; background:#fffdf9; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .split { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; flex-wrap:wrap; }
+    select, input, textarea { width:100%; padding:12px 13px; border-radius:14px; border:1px solid rgba(0,0,0,0.08); font:inherit; outline:none; background:white; }
+    textarea { min-height: 110px; resize: vertical; }
+    select:focus, input:focus, textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(212,175,55,0.12); }
+    form { display:grid; gap:12px; }
+    .message { min-height: 20px; font-weight:700; font-size:0.93rem; }
+    .success { color: var(--success); }
+    .error { color: var(--danger); }
+    .small { font-size:0.92rem; }
+    @media (max-width: 980px) { .hero-grid, .grid, .stat-wrap { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container nav">
+      <div class="brand">
+        <div class="badge">☕</div>
+        <div>
+          <div>The Golden Mug Portal</div>
+          <div class="small muted">Extended dashboard with LOA, tasks, and hierarchy controls</div>
+        </div>
+      </div>
+      <div class="row">
+        <div id="sessionTag" class="tag">Loading session...</div>
+        <button class="secondary" id="logoutBtn">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div class="hero-grid">
+        <div class="panel">
+          <h1 id="welcomeTitle">Welcome</h1>
+          <p class="muted" id="welcomeCopy">Loading portal access...</p>
+          <div class="stat-wrap">
+            <div class="stat"><strong id="statRole">-</strong><span class="muted">Your portal role</span></div>
+            <div class="stat"><strong id="statRequests">0</strong><span class="muted">Pending signups</span></div>
+            <div class="stat"><strong id="statAllowlist">0</strong><span class="muted">Allowed Discord IDs</span></div>
+            <div class="stat"><strong id="statTasks">0</strong><span class="muted">Open tasks for you</span></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Portal overview</h2>
+          <p class="muted">The TGM Portal now supports signup approvals, Discord ID allowlisting, LOA management, task assignment, and hierarchy enforcement.</p>
+          <div class="list">
+            <div class="item"><strong>Employee</strong><div class="muted small">Can submit LOA requests and view their own tasks.</div></div>
+            <div class="item"><strong>Admin</strong><div class="muted small">Can approve signups, review LOAs, and assign tasks within hierarchy.</div></div>
+            <div class="item"><strong>Owner / Developer</strong><div class="muted small">Can manage all modules and assign any lower rank.</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>My staff space</h2>
+        <div class="list">
+          <div class="item"><strong>Current access</strong><div class="muted small" id="currentAccessText">Loading...</div></div>
+          <div class="item"><strong>Hierarchy rules</strong><div class="muted small">You may only assign or approve roles lower than your own level. Admin cannot create Owners or Developers.</div></div>
+          <div class="item"><strong>Session details</strong><pre id="sessionDump" style="white-space:pre-wrap;background:#fffdf7;border:1px solid var(--border);padding:14px;border-radius:16px;line-height:1.6;margin-top:10px;"></pre></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Submit LOA request</h2>
+        <p class="muted">Employees can submit leave of absence requests for leadership review.</p>
+        <form id="loaForm">
+          <div><label for="loaStart">Start Date</label><input id="loaStart" type="date" required /></div>
+          <div><label for="loaEnd">End Date</label><input id="loaEnd" type="date" required /></div>
+          <div><label for="loaReason">Reason</label><textarea id="loaReason" required></textarea></div>
+          <div class="message" id="loaMessage"></div>
+          <div class="row"><button type="submit" class="primary">Submit LOA</button></div>
+        </form>
+      </div>
+
+      <div class="panel full">
+        <div class="split">
+          <div>
+            <h2>My tasks</h2>
+            <p class="muted">This shows tasks assigned directly to your Roblox Username.</p>
+          </div>
+          <button class="secondary" id="refreshMyTasksBtn">Refresh My Tasks</button>
+        </div>
+        <div id="myTasksList" class="list" style="margin-top:16px;"></div>
+      </div>
+
+      <div class="panel" id="taskAssignPanel" style="display:none;">
+        <h2>Assign a task</h2>
+        <p class="muted">You may assign tasks only to users below your own role level.</p>
+        <form id="taskForm">
+          <div><label for="taskUser">Assign To (Roblox Username)</label><input id="taskUser" required /></div>
+          <div><label for="taskTitle">Task Title</label><input id="taskTitle" required /></div>
+          <div><label for="taskDescription">Task Description</label><textarea id="taskDescription" required></textarea></div>
+          <div><label for="taskDueDate">Due Date</label><input id="taskDueDate" type="date" /></div>
+          <div class="message" id="taskMessage"></div>
+          <div class="row"><button type="submit" class="primary">Assign Task</button></div>
+        </form>
+      </div>
+
+      <div class="panel" id="loaReviewPanel" style="display:none;">
+        <div class="split">
+          <div>
+            <h2>Pending LOA requests</h2>
+            <p class="muted">Leadership can approve or deny leave requests here.</p>
+          </div>
+          <button class="secondary" id="refreshLoaBtn">Refresh LOAs</button>
+        </div>
+        <div id="loaList" class="list" style="margin-top:16px;"></div>
+      </div>
+
+      <div class="panel full" id="approvalsPanel" style="display:none;">
+        <div class="split">
+          <div>
+            <h2>Pending signup requests</h2>
+            <p class="muted">Approvals respect hierarchy. You cannot approve someone into a role equal to or above your own.</p>
+          </div>
+          <button class="secondary" id="refreshRequestsBtn">Refresh Requests</button>
+        </div>
+        <div id="requestsList" class="list" style="margin-top:16px;"></div>
+      </div>
+
+      <div class="panel" id="allowlistPanel" style="display:none;">
+        <h2>Discord ID approval list</h2>
+        <form id="allowlistForm">
+          <div><label for="allowDiscordId">Discord ID</label><input id="allowDiscordId" required /></div>
+          <div><label for="allowNotes">Notes</label><textarea id="allowNotes"></textarea></div>
+          <div class="message" id="allowlistMessage"></div>
+          <div class="row"><button type="submit" class="primary">Add to Approval List</button></div>
+        </form>
+      </div>
+
+      <div class="panel" id="allowlistViewPanel" style="display:none;">
+        <div class="split">
+          <div>
+            <h2>Approved Discord IDs</h2>
+            <p class="muted">The current allowlist used by signup requests.</p>
+          </div>
+          <button class="secondary" id="refreshAllowlistBtn">Refresh List</button>
+        </div>
+        <div id="allowlistList" class="list" style="margin-top:16px;"></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, query, where, orderBy, doc, getDoc, setDoc, addDoc, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB7ew2ofAv4VyWzGxsaUixwqSeKtuZDqfo",
+      authDomain: "tgm-portal-001.firebaseapp.com",
+      projectId: "tgm-portal-001",
+      storageBucket: "tgm-portal-001.firebasestorage.app",
+      messagingSenderId: "236612525488",
+      appId: "1:236612525488:web:a92b738d3247f75a4dca75"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const roleOrder = { 'Employee': 1, 'Admin': 2, 'Owner': 3, 'Developer': 4, 'Portal Developer': 4 };
+
+    const sessionRaw = localStorage.getItem('tgmPortalSession');
+    if (!sessionRaw) window.location.href = 'staff-login.html';
+    const session = JSON.parse(sessionRaw || '{}');
+    const currentRole = session.role || 'Employee';
+    const roleLevel = roleOrder[currentRole] || 1;
+
+    const sessionTag = document.getElementById('sessionTag');
+    const welcomeTitle = document.getElementById('welcomeTitle');
+    const welcomeCopy = document.getElementById('welcomeCopy');
+    const statRole = document.getElementById('statRole');
+    const statRequests = document.getElementById('statRequests');
+    const statAllowlist = document.getElementById('statAllowlist');
+    const statTasks = document.getElementById('statTasks');
+    const currentAccessText = document.getElementById('currentAccessText');
+    const sessionDump = document.getElementById('sessionDump');
+    const approvalsPanel = document.getElementById('approvalsPanel');
+    const allowlistPanel = document.getElementById('allowlistPanel');
+    const allowlistViewPanel = document.getElementById('allowlistViewPanel');
+    const loaReviewPanel = document.getElementById('loaReviewPanel');
+    const taskAssignPanel = document.getElementById('taskAssignPanel');
+    const requestsList = document.getElementById('requestsList');
+    const allowlistList = document.getElementById('allowlistList');
+    const loaList = document.getElementById('loaList');
+    const myTasksList = document.getElementById('myTasksList');
+
+    sessionTag.textContent = `${session.username || 'Unknown'} • ${currentRole}`;
+    welcomeTitle.textContent = `Welcome, ${session.username || 'Staff Member'}`;
+    welcomeCopy.textContent = `You are signed into the TGM Portal as ${currentRole}.`;
+    statRole.textContent = currentRole;
+    currentAccessText.textContent = roleLevel >= 2 ? 'You can access management modules and hierarchy-limited approval tools.' : 'You currently have employee-level access to the portal dashboard.';
+    sessionDump.textContent = JSON.stringify(session, null, 2);
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('tgmPortalSession');
+      window.location.href = 'staff-login.html';
+    });
+
+    function canManage() { return roleLevel >= 2; }
+    function canAssignRole(targetRole) { return (roleOrder[targetRole] || 0) < roleLevel; }
+
+    async function loadStats() {
+      const reqSnap = await getDocs(query(collection(db, 'signupRequests'), where('status', '==', 'pending')));
+      const allowSnap = await getDocs(collection(db, 'allowedDiscords'));
+      const taskSnap = await getDocs(query(collection(db, 'tasks'), where('assignedTo', '==', session.username || ''), where('status', 'in', ['Open', 'In Progress'])));
+      statRequests.textContent = String(reqSnap.size);
+      statAllowlist.textContent = String(allowSnap.size);
+      statTasks.textContent = String(taskSnap.size);
+    }
+
+    async function loadMyTasks() {
+      myTasksList.innerHTML = '<div class="muted">Loading tasks...</div>';
+      const snap = await getDocs(query(collection(db, 'tasks'), where('assignedTo', '==', session.username || '')));
+      if (snap.empty) {
+        myTasksList.innerHTML = '<div class="item"><div class="muted">No tasks are assigned to you right now.</div></div>';
+        return;
+      }
+      myTasksList.innerHTML = '';
+      snap.forEach((taskDoc) => {
+        const data = taskDoc.data();
+        const wrapper = document.createElement('div');
+        wrapper.className = 'item';
+        wrapper.innerHTML = `
+          <div class="split">
+            <div>
+              <strong>${data.title || 'Untitled Task'}</strong>
+              <div class="muted small">Assigned By: ${data.createdBy || 'Unknown'}</div>
+              <div class="muted small">Status: ${data.status || 'Open'}</div>
+              <div class="muted small">Due Date: ${data.dueDate || 'None'}</div>
+              <div class="muted small">${data.description || ''}</div>
+            </div>
+            <div class="row">
+              <button class="secondary" data-progress>Mark In Progress</button>
+              <button class="primary" data-complete>Mark Complete</button>
+            </div>
+          </div>
+        `;
+        wrapper.querySelector('[data-progress]').addEventListener('click', async () => {
+          await updateDoc(doc(db, 'tasks', taskDoc.id), { status: 'In Progress', updatedAt: serverTimestamp() });
+          await loadMyTasks();
+          await loadStats();
+        });
+        wrapper.querySelector('[data-complete]').addEventListener('click', async () => {
+          await updateDoc(doc(db, 'tasks', taskDoc.id), { status: 'Completed', completedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+          await loadMyTasks();
+          await loadStats();
+        });
+        myTasksList.appendChild(wrapper);
+      });
+    }
+
+    async function loadRequests() {
+      requestsList.innerHTML = '<div class="muted">Loading requests...</div>';
+      const snap = await getDocs(query(collection(db, 'signupRequests'), where('status', '==', 'pending'), orderBy('requestedAt', 'desc')));
+      if (snap.empty) {
+        requestsList.innerHTML = '<div class="item"><div class="muted">There are no pending signup requests right now.</div></div>';
+        return;
+      }
+      requestsList.innerHTML = '';
+      snap.forEach((requestDoc) => {
+        const data = requestDoc.data();
+        const wrapper = document.createElement('div');
+        wrapper.className = 'item';
+        wrapper.innerHTML = `
+          <div class="split">
+            <div>
+              <strong>${data.robloxUsername || 'Unknown User'}</strong>
+              <div class="muted small">Discord ID: ${data.discordId || 'N/A'}</div>
+              <div class="muted small">Status: ${data.status || 'pending'}</div>
+            </div>
+            <div style="min-width:220px;display:grid;gap:10px;">
+              <select data-role-select>
+                <option value="Employee">Employee</option>
+                <option value="Admin">Admin</option>
+                <option value="Owner">Owner</option>
+                <option value="Developer">Developer</option>
+              </select>
+              <div class="row">
+                <button class="primary" data-approve>Approve</button>
+                <button class="danger" data-deny>Deny</button>
+              </div>
+            </div>
+          </div>
+          <div class="message"></div>
+        `;
+        const approveBtn = wrapper.querySelector('[data-approve]');
+        const denyBtn = wrapper.querySelector('[data-deny]');
+        const roleSelect = wrapper.querySelector('[data-role-select]');
+        const msg = wrapper.querySelector('.message');
+        approveBtn.addEventListener('click', async () => {
+          msg.textContent = 'Approving request...';
+          const chosenRole = roleSelect.value;
+          if (!canAssignRole(chosenRole)) {
+            msg.textContent = 'Hierarchy restriction: you cannot approve this role.';
+            msg.classList.add('error');
+            return;
+          }
+          try {
+            await setDoc(doc(db, 'users', data.robloxUsername), {
+              robloxUsername: data.robloxUsername,
+              password: data.password,
+              discordId: data.discordId,
+              role: chosenRole,
+              approved: true,
+              createdAt: serverTimestamp(),
+              approvedBy: session.username || 'Unknown'
+            });
+            await deleteDoc(doc(db, 'signupRequests', requestDoc.id));
+            await loadRequests();
+            await loadStats();
+          } catch (err) {
+            console.error(err);
+            msg.textContent = 'Could not approve this request.';
+          }
+        });
+        denyBtn.addEventListener('click', async () => {
+          await deleteDoc(doc(db, 'signupRequests', requestDoc.id));
+          await loadRequests();
+          await loadStats();
+        });
+        requestsList.appendChild(wrapper);
+      });
+    }
+
+    async function loadAllowlist() {
+      allowlistList.innerHTML = '<div class="muted">Loading approved Discord IDs...</div>';
+      const snap = await getDocs(collection(db, 'allowedDiscords'));
+      if (snap.empty) {
+        allowlistList.innerHTML = '<div class="item"><div class="muted">No approved Discord IDs have been added yet.</div></div>';
+        return;
+      }
+      allowlistList.innerHTML = '';
+      snap.forEach((rowDoc) => {
+        const data = rowDoc.data();
+        const wrapper = document.createElement('div');
+        wrapper.className = 'item';
+        wrapper.innerHTML = `
+          <div class="split">
+            <div>
+              <strong>${data.discordId || rowDoc.id}</strong>
+              <div class="muted small">Allowed: ${String(data.allowed === true)}</div>
+              <div class="muted small">Added By: ${data.addedBy || 'Unknown'}</div>
+              <div class="muted small">Notes: ${data.notes || 'None'}</div>
+            </div>
+            <button class="danger">Remove</button>
+          </div>
+        `;
+        wrapper.querySelector('button').addEventListener('click', async () => {
+          await deleteDoc(doc(db, 'allowedDiscords', rowDoc.id));
+          await loadAllowlist();
+          await loadStats();
+        });
+        allowlistList.appendChild(wrapper);
+      });
+    }
+
+    async function loadLoas() {
+      loaList.innerHTML = '<div class="muted">Loading LOA requests...</div>';
+      const snap = await getDocs(query(collection(db, 'loaRequests'), where('status', '==', 'pending'), orderBy('requestedAt', 'desc')));
+      if (snap.empty) {
+        loaList.innerHTML = '<div class="item"><div class="muted">There are no pending LOA requests right now.</div></div>';
+        return;
+      }
+      loaList.innerHTML = '';
+      snap.forEach((loaDoc) => {
+        const data = loaDoc.data();
+        const wrapper = document.createElement('div');
+        wrapper.className = 'item';
+        wrapper.innerHTML = `
+          <div class="split">
+            <div>
+              <strong>${data.user || 'Unknown User'}</strong>
+              <div class="muted small">Start: ${data.startDate || 'N/A'}</div>
+              <div class="muted small">End: ${data.endDate || 'N/A'}</div>
+              <div class="muted small">Reason: ${data.reason || ''}</div>
+            </div>
+            <div class="row">
+              <button class="primary" data-approve>Approve</button>
+              <button class="danger" data-deny>Deny</button>
+            </div>
+          </div>
+        `;
+        wrapper.querySelector('[data-approve]').addEventListener('click', async () => {
+          await updateDoc(doc(db, 'loaRequests', loaDoc.id), { status: 'approved', reviewedBy: session.username || 'Unknown', reviewedAt: serverTimestamp() });
+          await loadLoas();
+        });
+        wrapper.querySelector('[data-deny]').addEventListener('click', async () => {
+          await updateDoc(doc(db, 'loaRequests', loaDoc.id), { status: 'denied', reviewedBy: session.username || 'Unknown', reviewedAt: serverTimestamp() });
+          await loadLoas();
+        });
+        loaList.appendChild(wrapper);
+      });
+    }
+
+    document.getElementById('loaForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('loaMessage');
+      msg.className = 'message';
+      msg.textContent = 'Submitting LOA request...';
+      try {
+        await addDoc(collection(db, 'loaRequests'), {
+          user: session.username || 'Unknown',
+          role: currentRole,
+          reason: document.getElementById('loaReason').value.trim(),
+          startDate: document.getElementById('loaStart').value,
+          endDate: document.getElementById('loaEnd').value,
+          status: 'pending',
+          requestedAt: serverTimestamp()
+        });
+        document.getElementById('loaForm').reset();
+        msg.textContent = 'LOA request submitted successfully.';
+        msg.classList.add('success');
+      } catch (err) {
+        console.error(err);
+        msg.textContent = 'Could not submit LOA request.';
+        msg.classList.add('error');
+      }
+    });
+
+    if (canManage()) {
+      approvalsPanel.style.display = 'block';
+      allowlistPanel.style.display = 'block';
+      allowlistViewPanel.style.display = 'block';
+      loaReviewPanel.style.display = 'block';
+      taskAssignPanel.style.display = 'block';
+
+      document.getElementById('refreshRequestsBtn').addEventListener('click', loadRequests);
+      document.getElementById('refreshAllowlistBtn').addEventListener('click', loadAllowlist);
+      document.getElementById('refreshLoaBtn').addEventListener('click', loadLoas);
+
+      document.getElementById('allowlistForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById('allowlistMessage');
+        msg.className = 'message';
+        msg.textContent = 'Adding Discord ID...';
+        try {
+          const discordId = document.getElementById('allowDiscordId').value.trim();
+          await setDoc(doc(db, 'allowedDiscords', discordId), {
+            discordId,
+            allowed: true,
+            notes: document.getElementById('allowNotes').value.trim(),
+            addedBy: session.username || 'Unknown',
+            addedAt: serverTimestamp()
+          });
+          document.getElementById('allowlistForm').reset();
+          msg.textContent = 'Discord ID added to approval list.';
+          msg.classList.add('success');
+          await loadAllowlist();
+          await loadStats();
+        } catch (err) {
+          console.error(err);
+          msg.textContent = 'Could not add this Discord ID.';
+          msg.classList.add('error');
+        }
+      });
+
+      document.getElementById('taskForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById('taskMessage');
+        msg.className = 'message';
+        msg.textContent = 'Assigning task...';
+        try {
+          const username = document.getElementById('taskUser').value.trim();
+          const userSnap = await getDoc(doc(db, 'users', username));
+          if (!userSnap.exists()) {
+            msg.textContent = 'That user does not exist in approved staff accounts.';
+            msg.classList.add('error');
+            return;
+          }
+          const targetRole = userSnap.data().role || 'Employee';
+          if (!canAssignRole(targetRole)) {
+            msg.textContent = 'Hierarchy restriction: you cannot assign tasks to this role.';
+            msg.classList.add('error');
+            return;
+          }
+          await addDoc(collection(db, 'tasks'), {
+            title: document.getElementById('taskTitle').value.trim(),
+            description: document.getElementById('taskDescription').value.trim(),
+            assignedTo: username,
+            assignedRole: targetRole,
+            dueDate: document.getElementById('taskDueDate').value || '',
+            createdBy: session.username || 'Unknown',
+            creatorRole: currentRole,
+            status: 'Open',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+          document.getElementById('taskForm').reset();
+          msg.textContent = 'Task assigned successfully.';
+          msg.classList.add('success');
+          await loadStats();
+        } catch (err) {
+          console.error(err);
+          msg.textContent = 'Could not assign this task.';
+          msg.classList.add('error');
+        }
+      });
+
+      loadRequests();
+      loadAllowlist();
+      loadLoas();
+    }
+
+    document.getElementById('refreshMyTasksBtn').addEventListener('click', loadMyTasks);
+    loadMyTasks();
+    loadStats();
+  </script>
+</body>
+</html>
